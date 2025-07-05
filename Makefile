@@ -1,73 +1,79 @@
-# Network File System (NFS) Makefile
-
+```
+# Compiler
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c99 -pthread -g
-LDFLAGS = -pthread
 
-# Source files
-HELPER_SOURCES = helper.c lock.c tries.c
-HELPER_OBJECTS = $(HELPER_SOURCES:.c=.o)
+# Compiler flags
+CFLAGS = -Wall -g
 
-# Header files
-HEADERS = helper.h lock.h tries.h ErrorCodes.h
-
-# Executables
+# Target names
 TARGETS = naming_server storage_server client
+
+# Object files
+OBJ_NAMING = naming_server.o helper.o tries.o
+OBJ_STORAGE = storage_server.o helper.o tries.o lock.o
+OBJ_CLIENT = client.o helper.o
+
+# IP Address for server
+IPADD = 127.0.0.1
 
 # Default target
 all: $(TARGETS)
 
-# Naming Server
-naming_server: naming_server.o $(HELPER_OBJECTS)
-    $(CC) $(LDFLAGS) -o $@ $^
+# Naming Server executable
+naming_server: $(OBJ_NAMING)
+    $(CC) $(CFLAGS) -o naming_server $(OBJ_NAMING)
 
-ns: naming_server
+# Storage Server executable
+storage_server: $(OBJ_STORAGE)
+    $(CC) $(CFLAGS) -o storage_server $(OBJ_STORAGE)
 
-# Storage Server
-storage_server: storage_server.o $(HELPER_OBJECTS)
-    $(CC) $(LDFLAGS) -o $@ $^
+# Client executable
+client: $(OBJ_CLIENT)
+    $(CC) $(CFLAGS) -o client $(OBJ_CLIENT)
 
-ss: storage_server
+# Compile naming_server.c
+naming_server.o: naming_server.c helper.h tries.h ErrorCodes.h
+    $(CC) $(CFLAGS) -c naming_server.c
 
-# Client
-client: client.o $(HELPER_OBJECTS)
-    $(CC) $(LDFLAGS) -o $@ $^
+# Compile storage_server.c
+storage_server.o: storage_server.c helper.h tries.h ErrorCodes.h lock.h
+    $(CC) $(CFLAGS) -c storage_server.c
 
-cl: client
+# Compile client.c
+client.o: client.c helper.h ErrorCodes.h
+    $(CC) $(CFLAGS) -c client.c
 
-# Object files
-%.o: %.c $(HEADERS)
-    $(CC) $(CFLAGS) -c $< -o $@
+# Compile helper.c
+helper.o: helper.c helper.h ErrorCodes.h
+    $(CC) $(CFLAGS) -c helper.c
 
-# Clean build artifacts
+# Compile tries.c
+tries.o: tries.c tries.h ErrorCodes.h
+    $(CC) $(CFLAGS) -c tries.c
+
+# Compile lock.c
+lock.o: lock.c lock.h ErrorCodes.h
+    $(CC) $(CFLAGS) -c lock.c
+
+# Clean up
 clean:
-    rm -f *.o $(TARGETS)
+    rm -f $(TARGETS) *.o
 
-# Clean backups (as mentioned in README)
-clean-backups:
-    rm -rf ./backupforss
+.PHONY: all clean ns ss cl
 
-# Full clean
-distclean: clean clean-backups
-    rm -f log.txt
+# Run Naming Server
+ns: naming_server
+    rm -rf ./backupfolderforss
+    @echo "Enter port number for Naming Server:"
+    @read PORT; ./naming_server $$PORT
 
-# Install dependencies (ffplay for streaming)
-install-deps:
-    @echo "Installing ffplay for media streaming..."
-    @which ffplay > /dev/null || echo "Please install ffmpeg package for ffplay support"
+# Run Storage Server
+ss: storage_server
+    @echo "Enter root path for Storage Server:"
+    @read ROOT_PATH; ./storage_server $(IPADD) "$$ROOT_PATH"
 
-# Help target
-help:
-    @echo "Available targets:"
-    @echo "  all           - Build all components"
-    @echo "  ns            - Build Naming Server"
-    @echo "  ss            - Build Storage Server"
-    @echo "  cl            - Build Client"
-    @echo "  clean         - Remove build artifacts"
-    @echo "  clean-backups - Remove backup folders"
-    @echo "  distclean     - Full cleanup including logs"
-    @echo "  install-deps  - Check/install dependencies"
-    @echo "  help          - Show this help message"
-
-# Phony targets
-.PHONY: all clean clean-backups distclean install-deps help ns ss cl
+# Run Client
+cl: client
+    @echo "Enter IP address of Naming Server:"
+    @read NS_IP; ./client $$NS_IP
+```
